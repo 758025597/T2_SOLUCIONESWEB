@@ -1,0 +1,396 @@
+{
+  "info": {
+    "name": "T2 Soluciones Web - Product y Order",
+    "description": "Pruebas de la API (alvarez_asencio). Ejecutar en orden: carpeta 1 Product y carpeta 2 Order. Requiere la aplicación corriendo en el puerto 9494.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:9494/v1" },
+    { "key": "productId", "value": "" },
+    { "key": "sku", "value": "" },
+    { "key": "orderId", "value": "" },
+    { "key": "orderNumber", "value": "" },
+    { "key": "orderDate", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1 - Product",
+      "item": [
+        {
+          "name": "1.1 POST crear producto (201)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.collectionVariables.set('sku', 'SKU-' + Date.now());"
+              ] }
+            },
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                "const body = pm.response.json();",
+                "pm.test('Devuelve idProduct', () => pm.expect(body.idProduct).to.be.a('number'));",
+                "pm.test('active es true por defecto', () => pm.expect(body.active).to.eql(true));",
+                "pm.test('Header Location presente', () => pm.response.to.have.header('Location'));",
+                "pm.collectionVariables.set('productId', body.idProduct);"
+              ] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"{{sku}}\",\n  \"name\": \"Arroz Costeño 5kg\",\n  \"stock\": 20,\n  \"price\": 18.50\n}" },
+            "url": "{{baseUrl}}/products"
+          }
+        },
+        {
+          "name": "1.2 POST crear otro producto inactivo (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                "pm.test('active es false', () => pm.expect(pm.response.json().active).to.eql(false));"
+              ] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"AZU-{{$timestamp}}\",\n  \"name\": \"Azúcar Rubia 1kg\",\n  \"stock\": 0,\n  \"price\": 4.20,\n  \"active\": false\n}" },
+            "url": "{{baseUrl}}/products"
+          }
+        },
+        {
+          "name": "1.3 GET listar productos (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                "pm.test('Devuelve una lista', () => pm.expect(pm.response.json()).to.be.an('array'));"
+              ] }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/products" }
+        },
+        {
+          "name": "1.4 GET buscar producto por id (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                "pm.test('Es el producto creado', () => pm.expect(pm.response.json().idProduct).to.eql(Number(pm.collectionVariables.get('productId'))));"
+              ] }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/products/{{productId}}" }
+        },
+        {
+          "name": "1.5 PUT actualizar producto (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                "const body = pm.response.json();",
+                "pm.test('Nombre actualizado', () => pm.expect(body.name).to.eql('Arroz Costeño 1kg'));",
+                "pm.test('Stock actualizado', () => pm.expect(body.stock).to.eql(50));"
+              ] }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"{{sku}}\",\n  \"name\": \"Arroz Costeño 1kg\",\n  \"stock\": 50,\n  \"price\": 4.50,\n  \"active\": true\n}" },
+            "url": "{{baseUrl}}/products/{{productId}}"
+          }
+        },
+        {
+          "name": "1.6 POST datos inválidos (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                "const errors = pm.response.json().errors;",
+                "pm.test('Error en sku', () => pm.expect(errors).to.have.property('sku'));",
+                "pm.test('Error en name', () => pm.expect(errors).to.have.property('name'));",
+                "pm.test('Error en stock (>= 0)', () => pm.expect(errors).to.have.property('stock'));",
+                "pm.test('Error en price (> 0)', () => pm.expect(errors).to.have.property('price'));"
+              ] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"\",\n  \"name\": \"\",\n  \"stock\": -1,\n  \"price\": 0\n}" },
+            "url": "{{baseUrl}}/products"
+          }
+        },
+        {
+          "name": "1.7 POST sku duplicado (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));"
+              ] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"{{sku}}\",\n  \"name\": \"Producto con sku repetido\",\n  \"stock\": 1,\n  \"price\": 1.00\n}" },
+            "url": "{{baseUrl}}/products"
+          }
+        },
+        {
+          "name": "1.8 GET producto inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));"
+              ] }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/products/999999" }
+        },
+        {
+          "name": "1.9 PUT producto inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));"
+              ] }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"NO-EXISTE\",\n  \"name\": \"No existe\",\n  \"stock\": 1,\n  \"price\": 1.00\n}" },
+            "url": "{{baseUrl}}/products/999999"
+          }
+        },
+        {
+          "name": "1.10 DELETE eliminar producto (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 204 No Content', () => pm.response.to.have.status(204));"
+              ] }
+            }
+          ],
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/products/{{productId}}" }
+        },
+        {
+          "name": "1.11 DELETE producto ya eliminado (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));"
+              ] }
+            }
+          ],
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/products/{{productId}}" }
+        }
+      ]
+    },
+    {
+      "name": "2 - Order",
+      "item": [
+        {
+          "name": "2.1 POST crear pedido (201)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.collectionVariables.set('orderNumber', 'PED-' + Date.now());"
+              ] }
+            },
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                "const body = pm.response.json();",
+                "pm.test('Devuelve idOrder', () => pm.expect(body.idOrder).to.be.a('number'));",
+                "pm.test('orderDate asignada automáticamente', () => pm.expect(body.orderDate).to.be.a('string'));",
+                "pm.test('status PENDIENTE por defecto', () => pm.expect(body.status).to.eql('PENDIENTE'));",
+                "pm.collectionVariables.set('orderId', body.idOrder);",
+                "pm.collectionVariables.set('orderDate', body.orderDate);"
+              ] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"orderNumber\": \"{{orderNumber}}\",\n  \"customerName\": \"Juan Pérez\",\n  \"total\": 150.00\n}" },
+            "url": "{{baseUrl}}/orders"
+          }
+        },
+        {
+          "name": "2.2 POST pedido enviando orderDate (se ignora) (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                "pm.test('Ignora la fecha enviada por el cliente', () => pm.expect(pm.response.json().orderDate).to.not.include('2020-01-01'));",
+                "pm.test('Respeta el status enviado', () => pm.expect(pm.response.json().status).to.eql('ENVIADO'));"
+              ] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"orderNumber\": \"PED-{{$timestamp}}\",\n  \"customerName\": \"María López\",\n  \"orderDate\": \"2020-01-01T00:00:00\",\n  \"total\": 89.90,\n  \"status\": \"ENVIADO\"\n}" },
+            "url": "{{baseUrl}}/orders"
+          }
+        },
+        {
+          "name": "2.3 GET listar pedidos (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                "pm.test('Devuelve una lista', () => pm.expect(pm.response.json()).to.be.an('array'));"
+              ] }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/orders" }
+        },
+        {
+          "name": "2.4 GET buscar pedido por id (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                "pm.test('Es el pedido creado', () => pm.expect(pm.response.json().idOrder).to.eql(Number(pm.collectionVariables.get('orderId'))));"
+              ] }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/orders/{{orderId}}" }
+        },
+        {
+          "name": "2.5 PUT actualizar pedido a ENVIADO (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                "const body = pm.response.json();",
+                "pm.test('status actualizado a ENVIADO', () => pm.expect(body.status).to.eql('ENVIADO'));",
+                "pm.test('orderDate no cambia', () => pm.expect(body.orderDate).to.eql(pm.collectionVariables.get('orderDate')));"
+              ] }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"orderNumber\": \"{{orderNumber}}\",\n  \"customerName\": \"Juan Pérez\",\n  \"total\": 175.50,\n  \"status\": \"ENVIADO\"\n}" },
+            "url": "{{baseUrl}}/orders/{{orderId}}"
+          }
+        },
+        {
+          "name": "2.6 POST datos inválidos (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                "const errors = pm.response.json().errors;",
+                "pm.test('Error en orderNumber', () => pm.expect(errors).to.have.property('orderNumber'));",
+                "pm.test('Error en customerName', () => pm.expect(errors).to.have.property('customerName'));",
+                "pm.test('Error en total (> 0)', () => pm.expect(errors).to.have.property('total'));"
+              ] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"orderNumber\": \"\",\n  \"customerName\": \"\",\n  \"total\": 0\n}" },
+            "url": "{{baseUrl}}/orders"
+          }
+        },
+        {
+          "name": "2.7 POST status inválido (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));"
+              ] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"orderNumber\": \"PED-MALO\",\n  \"customerName\": \"Cliente\",\n  \"total\": 10.00,\n  \"status\": \"PERDIDO\"\n}" },
+            "url": "{{baseUrl}}/orders"
+          }
+        },
+        {
+          "name": "2.8 POST orderNumber duplicado (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));"
+              ] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"orderNumber\": \"{{orderNumber}}\",\n  \"customerName\": \"Otro cliente\",\n  \"total\": 20.00\n}" },
+            "url": "{{baseUrl}}/orders"
+          }
+        },
+        {
+          "name": "2.9 GET pedido inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));"
+              ] }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/orders/999999" }
+        },
+        {
+          "name": "2.10 DELETE eliminar pedido (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 204 No Content', () => pm.response.to.have.status(204));"
+              ] }
+            }
+          ],
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/orders/{{orderId}}" }
+        },
+        {
+          "name": "2.11 DELETE pedido ya eliminado (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));"
+              ] }
+            }
+          ],
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/orders/{{orderId}}" }
+        }
+      ]
+    }
+  ]
+}
